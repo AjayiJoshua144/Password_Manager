@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+{% block content %}
+<div style="max-width:440px;margin:3rem auto;padding:0 1.5rem">
+  <div class="card">
+    <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:.3rem">Create Account</h2>
+    <p style="color:var(--dim);font-size:.82rem;margin-bottom:1.8rem">
+      Your master password is never stored — only a bcrypt hash. Choose a strong one.
+    </p>
+
+    <form method="POST" action="{{ url_for('register') }}">
+
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" name="username" placeholder="e.g. joshua" required autofocus
+               minlength="3" maxlength="30"/>
+      </div>
+
+      <div class="form-group">
+        <label>Master Password</label>
+        <input type="password" name="master_password" id="mpw" placeholder="At least 8 characters"
+               required minlength="8" oninput="checkStrength(this.value)"/>
+        <!-- Strength meter (visual feedback) -->
+        <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+        <div class="strength-label" id="strengthLabel">Enter a password to check strength</div>
+      </div>
+
+      <div class="form-group">
+        <label>Confirm Master Password</label>
+        <input type="password" name="confirm_password" placeholder="Re-enter master password" required/>
+        <div class="form-hint">⚠️ If you forget your master password, your vault cannot be recovered.</div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full" style="margin-top:.5rem">
+        Create Account
+      </button>
+    </form>
+
+    <p style="text-align:center;margin-top:1.2rem;font-size:.82rem;color:var(--dim)">
+      Already have an account? <a href="{{ url_for('login') }}">Login</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Password Strength Checker ────────────────────────────── */
+function checkStrength(pw){
+  const fill  = document.getElementById('strengthFill');
+  const label = document.getElementById('strengthLabel');
+
+  let score = 0;
+  if(pw.length >= 8)  score++;
+  if(pw.length >= 12) score++;
+  if(/[A-Z]/.test(pw)) score++;
+  if(/[0-9]/.test(pw)) score++;
+  if(/[^A-Za-z0-9]/.test(pw)) score++;
+
+  const levels = [
+    {pct:'20%', bg:'#ff4d6d', txt:'Very Weak'},
+    {pct:'40%', bg:'#ff8c42', txt:'Weak'},
+    {pct:'60%', bg:'#ffc107', txt:'Fair'},
+    {pct:'80%', bg:'#66bb6a', txt:'Strong'},
+    {pct:'100%',bg:'#00ff99', txt:'Very Strong'},
+  ];
+
+  const lvl = levels[Math.min(score,4)];
+  fill.style.width      = lvl.pct;
+  fill.style.background = lvl.bg;
+  label.textContent     = `Strength: ${lvl.txt}`;
+  label.style.color     = lvl.bg;
+}
+</script>
+{% endblock %}

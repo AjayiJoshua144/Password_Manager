@@ -1,0 +1,443 @@
+{% extends "base.html" %}
+{% block title %}My Vault{% endblock %}
+
+{% block extra_styles %}
+<style>
+.vault-header{
+  max-width:960px;margin:0 auto;padding:2rem 1.5rem 0;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem
+}
+.vault-stats{
+  display:flex;gap:1.5rem;flex-wrap:wrap
+}
+.stat{text-align:center}
+.stat-n{font-size:1.6rem;font-weight:700;color:var(--cyan);display:block;font-family:var(--mono)}
+.stat-l{font-size:.72rem;color:var(--dim);text-transform:uppercase;letter-spacing:.07em}
+
+.vault-wrap{max-width:960px;margin:1.5rem auto;padding:0 1.5rem 3rem}
+
+/* Search bar */
+.search-bar{
+  width:100%;padding:.6rem 1rem;background:var(--bg2);
+  border:1px solid var(--border);border-radius:var(--r);
+  color:var(--text);font-size:.875rem;outline:none;
+  transition:border-color var(--t);margin-bottom:1.5rem
+}
+.search-bar:focus{border-color:var(--border-h)}
+
+/* Entry cards */
+.entries-grid{display:flex;flex-direction:column;gap:.75rem}
+.entry-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--r);padding:1.1rem 1.3rem;
+  display:flex;align-items:center;gap:1.2rem;
+  transition:border-color var(--t);flex-wrap:wrap
+}
+.entry-card:hover{border-color:var(--border-h)}
+.entry-icon{
+  width:38px;height:38px;border-radius:50%;
+  background:var(--cyan-dim,rgba(0,200,255,.1));
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;flex-shrink:0;
+  border:1px solid rgba(0,200,255,.2)
+}
+.entry-info{flex:1;min-width:150px}
+.entry-site{font-weight:700;font-size:.95rem;margin-bottom:.1rem}
+.entry-user{font-size:.8rem;color:var(--dim)}
+.entry-url{font-size:.72rem;color:var(--dim);font-family:var(--mono)}
+.entry-actions{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+
+/* Password reveal field */
+.pw-field{
+  display:flex;align-items:center;gap:.4rem;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--r);padding:.3rem .6rem;
+  min-width:180px
+}
+.pw-text{
+  font-family:var(--mono);font-size:.82rem;
+  color:var(--text);letter-spacing:.08em;flex:1;
+  user-select:all
+}
+
+/* Gen modal */
+.gen-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.8rem}
+.gen-out{
+  flex:1;font-family:var(--mono);font-size:.9rem;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--r);padding:.55rem .75rem;color:var(--green);
+  word-break:break-all
+}
+.range-row{display:flex;align-items:center;gap:.8rem;margin-bottom:1rem}
+.range-row input[type=range]{flex:1;accent-color:var(--cyan)}
+.range-val{font-family:var(--mono);font-size:.82rem;color:var(--cyan);min-width:28px;text-align:right}
+
+.empty-state{text-align:center;padding:4rem 1rem;color:var(--dim)}
+.empty-state .big{font-size:3rem;margin-bottom:.75rem}
+.empty-state p{margin-bottom:1.2rem;font-size:.95rem}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── VAULT HEADER ── -->
+<div class="vault-header">
+  <div>
+    <h1 style="font-size:1.4rem;font-weight:700">🔐 My Vault</h1>
+    <p style="font-size:.8rem;color:var(--dim);font-family:var(--mono)">// All passwords encrypted with AES-256-GCM</p>
+  </div>
+  <div class="vault-stats">
+    <div class="stat">
+      <span class="stat-n">{{ count }}</span>
+      <span class="stat-l">Stored</span>
+    </div>
+    <div class="stat">
+      <span class="stat-n" style="color:var(--green)">AES</span>
+      <span class="stat-l">Encrypted</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+    <button class="btn btn-outline btn-sm" onclick="openModal('genModal')">🎲 Generate Password</button>
+    <button class="btn btn-primary btn-sm" onclick="openModal('addModal')">+ Add Entry</button>
+  </div>
+</div>
+
+<!-- ── VAULT BODY ── -->
+<div class="vault-wrap">
+
+  {% if entries %}
+  <!-- Search -->
+  <input class="search-bar" id="searchInput" type="text"
+         placeholder="🔍  Search by site name or username..." oninput="filterEntries()"/>
+
+  <!-- Entries -->
+  <div class="entries-grid" id="entriesGrid">
+    {% for e in entries %}
+    <div class="entry-card" data-name="{{ e.site_name|lower }}" data-user="{{ e.username_entry|lower }}">
+      <div class="entry-icon">🌐</div>
+
+      <div class="entry-info">
+        <div class="entry-site">{{ e.site_name }}</div>
+        <div class="entry-user">{{ e.username_entry }}</div>
+        {% if e.site_url %}
+          <div class="entry-url">{{ e.site_url }}</div>
+        {% endif %}
+        <div style="margin-top:.3rem">
+          <span class="badge badge-cyan" style="font-size:.65rem">{{ e.updated_at[:10] }}</span>
+        </div>
+      </div>
+
+      <!-- Password reveal field -->
+      <div class="pw-field" id="pwField_{{ e.id }}">
+        <span class="pw-text" id="pwText_{{ e.id }}">••••••••••••</span>
+        <button class="btn btn-ghost btn-sm" onclick="toggleReveal({{ e.id }}, this)"
+                data-revealed="false" title="Show password">👁</button>
+        <button class="btn btn-ghost btn-sm" onclick="copyPw({{ e.id }})"
+                title="Copy password">📋</button>
+      </div>
+
+      <!-- Actions -->
+      <div class="entry-actions">
+        <button class="btn btn-ghost btn-sm"
+          onclick='openEditModal({{ e.id }}, {{ e.site_name|tojson }}, {{ e.site_url|tojson or "\"\"" }}, {{ e.username_entry|tojson }})'>
+          ✏️ Edit
+        </button>
+        <form method="POST" action="{{ url_for('delete_entry', entry_id=e.id) }}"
+              onsubmit="return confirm('Delete {{ e.site_name }}? This cannot be undone.')">
+          <button type="submit" class="btn btn-danger btn-sm">🗑</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="big">🔒</div>
+    <p>Your vault is empty. Add your first password entry.</p>
+    <button class="btn btn-primary" onclick="openModal('addModal')">+ Add First Entry</button>
+  </div>
+  {% endif %}
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     MODAL: ADD ENTRY
+══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="addModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('addModal')">✕</button>
+    <div class="modal-title">➕ Add New Entry</div>
+    <form method="POST" action="{{ url_for('add_entry') }}">
+      <div class="form-group">
+        <label>Site / App Name *</label>
+        <input type="text" name="site_name" placeholder="e.g. Gmail, Instagram" required/>
+      </div>
+      <div class="form-group">
+        <label>URL (optional)</label>
+        <input type="url" name="site_url" placeholder="https://gmail.com"/>
+      </div>
+      <div class="form-group">
+        <label>Username / Email *</label>
+        <input type="text" name="username_entry" placeholder="your@email.com" required/>
+      </div>
+      <div class="form-group">
+        <label>Password *</label>
+        <div style="display:flex;gap:.5rem">
+          <input type="text" name="password" id="addPw" placeholder="Enter or generate" required style="flex:1"/>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="openModal('genModal')">🎲</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <textarea name="notes" placeholder="Any extra info (also encrypted)"></textarea>
+      </div>
+      <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:.5rem">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('addModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Entry 🔒</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     MODAL: EDIT ENTRY
+══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="editModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('editModal')">✕</button>
+    <div class="modal-title">✏️ Edit Entry</div>
+    <form method="POST" id="editForm">
+      <div class="form-group">
+        <label>Site / App Name *</label>
+        <input type="text" name="site_name" id="edit_site" required/>
+      </div>
+      <div class="form-group">
+        <label>URL (optional)</label>
+        <input type="url" name="site_url" id="edit_url"/>
+      </div>
+      <div class="form-group">
+        <label>Username / Email *</label>
+        <input type="text" name="username_entry" id="edit_user" required/>
+      </div>
+      <div class="form-group">
+        <label>New Password (leave blank to keep current)</label>
+        <input type="text" name="password" id="edit_pw" placeholder="Enter new password or leave blank"/>
+        <div class="form-hint">Note: field cannot be pre-filled for security. Re-enter to change.</div>
+      </div>
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <textarea name="notes" id="edit_notes"></textarea>
+      </div>
+      <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:.5rem">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('editModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Update Entry 🔒</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     MODAL: PASSWORD GENERATOR
+══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="genModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('genModal')">✕</button>
+    <div class="modal-title">🎲 Password Generator</div>
+    <p style="font-size:.82rem;color:var(--dim);margin-bottom:1rem">
+      Uses Python's <code style="color:var(--cyan)">secrets</code> module — cryptographically secure.
+    </p>
+
+    <!-- Length slider -->
+    <div class="range-row">
+      <span style="font-size:.8rem;color:var(--dim)">Length</span>
+      <input type="range" id="genLen" min="8" max="64" value="16" oninput="updateLen(this.value)"/>
+      <span class="range-val" id="genLenVal">16</span>
+    </div>
+
+    <!-- Generated password display -->
+    <div class="gen-row">
+      <div class="gen-out" id="genOut">Click Generate ↓</div>
+    </div>
+
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="generatePw()">🎲 Generate</button>
+      <button class="btn btn-ghost" onclick="copyGenPw()">📋 Copy</button>
+      <button class="btn btn-outline btn-sm" onclick="useGenPw()"
+              title="Paste into the Add Entry form">✅ Use This Password</button>
+    </div>
+
+    <!-- Auto-clear notice -->
+    <p style="font-size:.72rem;color:var(--dim);margin-top:1rem">
+      ⏱ Copied password auto-clears from clipboard after <strong style="color:var(--cyan)">30 seconds</strong>.
+    </p>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* =====================================================
+   vault.js — Inline JS for the Vault page
+   Ajayi Joshua Abayomi | Babcock University | 300L
+
+   Features:
+    1. openModal / closeModal
+    2. toggleReveal  — fetch() to decrypt a password
+    3. copyPw        — copy to clipboard + auto-clear
+    4. filterEntries — live search
+    5. generatePw    — fetch /generate endpoint
+    6. openEditModal — pre-fills edit form
+===================================================== */
+
+/* ── 1. MODAL HELPERS ─────────────────────────────── */
+function openModal(id){  document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+
+/* ── 2. REVEAL / HIDE PASSWORD ───────────────────── */
+/*
+  When the user clicks 👁, we:
+  a) Send a POST to /vault/reveal/<id>  (server decrypts it)
+  b) Display the plain text in #pwText_<id>
+  c) Start a 30-second auto-hide timer
+*/
+const revealTimers = {};   // Stores auto-hide timers per entry id
+
+async function toggleReveal(id, btn){
+  const textEl = document.getElementById('pwText_' + id);
+  const isRevealed = btn.dataset.revealed === 'true';
+
+  if(isRevealed){
+    // ── HIDE ──
+    textEl.textContent = '••••••••••••';
+    btn.dataset.revealed = 'false';
+    btn.textContent = '👁';
+    clearTimeout(revealTimers[id]);
+    return;
+  }
+
+  // ── REVEAL ── (fetch the decrypted password from server)
+  try {
+    const resp = await fetch(`/vault/reveal/${id}`, { method:'POST' });
+    const data = await resp.json();
+
+    if(data.error){
+      showToast('❌ ' + data.error);
+      return;
+    }
+
+    textEl.textContent   = data.password;
+    btn.dataset.revealed = 'true';
+    btn.textContent      = '🙈';
+
+    // Auto-hide after 30 seconds (security: don't leave plain text visible)
+    revealTimers[id] = setTimeout(()=>{
+      textEl.textContent   = '••••••••••••';
+      btn.dataset.revealed = 'false';
+      btn.textContent      = '👁';
+      showToast('🔒 Password hidden (30s timeout)');
+    }, 30000);
+
+  } catch(err){
+    showToast('❌ Network error. Try again.');
+  }
+}
+
+
+/* ── 3. COPY PASSWORD TO CLIPBOARD ──────────────── */
+/*
+  Copies the displayed password (or fetches it if hidden).
+  Auto-clears clipboard after 30 seconds.
+*/
+let clipboardTimer = null;
+
+async function copyPw(id){
+  const textEl = document.getElementById('pwText_' + id);
+  let pw = textEl.textContent;
+
+  // If hidden, fetch the password first
+  if(pw === '••••••••••••'){
+    try{
+      const resp = await fetch(`/vault/reveal/${id}`, {method:'POST'});
+      const data = await resp.json();
+      if(data.error){ showToast('❌ ' + data.error); return; }
+      pw = data.password;
+    } catch(e){ showToast('❌ Could not fetch password.'); return; }
+  }
+
+  // Write to clipboard
+  navigator.clipboard.writeText(pw).then(()=>{
+    showToast('📋 Copied! Clears in 30s.');
+
+    // Auto-clear clipboard after 30 seconds
+    clearTimeout(clipboardTimer);
+    clipboardTimer = setTimeout(()=>{
+      navigator.clipboard.writeText('');  // Overwrite with empty string
+      showToast('🔒 Clipboard cleared.');
+    }, 30000);
+  });
+}
+
+
+/* ── 4. LIVE SEARCH / FILTER ─────────────────────── */
+function filterEntries(){
+  const q     = document.getElementById('searchInput').value.toLowerCase();
+  const cards = document.querySelectorAll('.entry-card');
+  cards.forEach(card=>{
+    const name = card.dataset.name || '';
+    const user = card.dataset.user || '';
+    card.style.display = (name.includes(q) || user.includes(q)) ? '' : 'none';
+  });
+}
+
+
+/* ── 5. PASSWORD GENERATOR ───────────────────────── */
+let lastGenPw = '';
+
+function updateLen(v){ document.getElementById('genLenVal').textContent = v; }
+
+async function generatePw(){
+  const len  = document.getElementById('genLen').value;
+  try{
+    const resp = await fetch(`/generate?length=${len}`);
+    const data = await resp.json();
+    lastGenPw  = data.password;
+    document.getElementById('genOut').textContent = lastGenPw;
+  } catch(e){ showToast('❌ Generator failed.'); }
+}
+
+function copyGenPw(){
+  if(!lastGenPw){ showToast('Generate a password first.'); return; }
+  navigator.clipboard.writeText(lastGenPw).then(()=>{
+    showToast('📋 Password copied! Clears in 30s.');
+    clearTimeout(clipboardTimer);
+    clipboardTimer = setTimeout(()=>{ navigator.clipboard.writeText(''); }, 30000);
+  });
+}
+
+function useGenPw(){
+  /* Pastes the generated password into the Add Entry form's password field */
+  const addField = document.getElementById('addPw');
+  if(!lastGenPw){ showToast('Generate first, then click Use.'); return; }
+  if(addField){ addField.value = lastGenPw; }
+  closeModal('genModal');
+  openModal('addModal');
+  showToast('✅ Password pasted into the form.');
+}
+
+
+/* ── 6. EDIT MODAL PRE-FILL ──────────────────────── */
+function openEditModal(id, site, url, username){
+  document.getElementById('edit_site').value = site;
+  document.getElementById('edit_url').value  = url || '';
+  document.getElementById('edit_user').value = username;
+  document.getElementById('edit_pw').value   = '';   // Never pre-fill
+  document.getElementById('editForm').action = `/vault/edit/${id}`;
+  openModal('editModal');
+}
+</script>
+{% endblock %}
