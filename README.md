@@ -1,10 +1,10 @@
-# 🔐 LockDown — Student Password Manager
+# LockDown - Student Password Manager
 **Author:** Ajayi Joshua Abayomi | Babcock University | 300L IT
 **Stack:** Python · Flask · SQLite · AES-GCM · PBKDF2 · bcrypt
 
 ---
 
-## 📌 What This Does
+## What This Does
 A web-based password manager that stores your credentials securely using real-world encryption. Built at student (300L) level — every line is commented to explain what and why.
 
 | Feature | How |
@@ -19,7 +19,7 @@ A web-based password manager that stores your credentials securely using real-wo
 
 ---
 
-## 📁 File Structure
+## File Structure
 ```
 passmanager/
 ├── app.py          ← Flask routes (main entry point)
@@ -37,7 +37,7 @@ passmanager/
 
 ---
 
-## ⚙️ How to Run
+## How to Run
 
 ### Step 1 — Install dependencies
 ```bash
@@ -56,7 +56,7 @@ http://127.0.0.1:5000
 
 ---
 
-## 🧠 Key Concepts Explained (for study)
+## Key Concepts Explained (for study)
 
 ### Why two different hashing operations?
 | Purpose | Algorithm | Stored In |
@@ -88,7 +88,7 @@ Auto-hides after 30 seconds
 
 ---
 
-## ⚠️ Learning Note
+## Learning Note
 This is a student project — for production use you would also add:
 - HTTPS (TLS)
 - CSRF tokens on all forms  
