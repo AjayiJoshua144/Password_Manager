@@ -19,22 +19,6 @@ A web-based password manager that stores your credentials securely using real-wo
 
 ---
 
-## File Structure
-```
-passmanager/
-├── app.py          ← Flask routes (main entry point)
-├── crypto.py       ← AES-GCM encrypt/decrypt + PBKDF2 key derivation
-├── database.py     ← SQLite setup + all DB queries
-├── requirements.txt
-├── templates/
-│   ├── base.html   ← Shared layout, nav, flash messages
-│   ├── index.html  ← Landing page
-│   ├── register.html
-│   ├── login.html
-│   └── vault.html  ← Main CRUD dashboard
-└── README.md
-```
-
 ---
 
 ## How to Run
@@ -62,7 +46,7 @@ http://127.0.0.1:5000
 | Purpose | Algorithm | Stored In |
 |---|---|---|
 | Login check | bcrypt | DB (users.password_hash) |
-| Vault key | PBKDF2 → AES key | Session only (never stored) |
+| Vault key | PBKDF2 -> AES key | Session only (never stored) |
 
 ### Encryption Flow
 ```
