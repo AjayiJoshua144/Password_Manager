@@ -19,8 +19,6 @@ A web-based password manager that stores your credentials securely using real-wo
 
 ---
 
----
-
 ## How to Run
 
 ### Step 1 — Install dependencies
